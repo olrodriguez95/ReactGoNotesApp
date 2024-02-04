@@ -103,12 +103,16 @@ func favoriteNoteById(c *gin.Context) {
 }
 
 func favoriteNote(id int) (*Note, error) {
-	for i, n := range notes {
-		if n.ID == id {
-			currNote := &notes[i]
-			currNote.Favorited = !currNote.Favorited
-			return currNote, nil
-		}
+
+	db, err := getDbConnection()
+
+	if err == nil {
+		var currNote Note
+		db.Where("id = ?", id).First(&currNote)
+
+		// currNote.Favorited = !currNote.Favorited
+
+		db.Model(&currNote).Where("id = ?", id).Update("favorited", !currNote.Favorited)
 	}
 
 	return nil, errors.New("error updating note")
