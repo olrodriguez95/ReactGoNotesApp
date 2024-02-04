@@ -1,23 +1,16 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-contrib/cors"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
-)
-
-const (
-	user     = ""
-	password = ""
-	host     = ""
-	port     = 0
-	dbname   = ""
 )
 
 type Note struct {
@@ -25,19 +18,31 @@ type Note struct {
 	NoteTitle string `json:"note_title"`
 	NoteText  string `json:"note_text"`
 	CreatedBy string `json:"created_by"`
-	Favorite  bool   `json:"favorite"`
+	Favorited bool   `json:"favorite"`
 }
 
-var notes = []Note{
-	{ID: 1, NoteTitle: "Groceries", NoteText: "Milk, Bread, Eggs", CreatedBy: "Oscar", Favorite: false},
-	{ID: 2, NoteTitle: "Consoles To Play", NoteText: "PS2, PS5, XBox, Sega Genesis", CreatedBy: "Oscar", Favorite: false},
-	{ID: 3, NoteTitle: "Classes", NoteText: "Math, English 101, Algebra, Intro To CS 2", CreatedBy: "Oscar", Favorite: false},
-}
+var notes = []Note{}
 
 func getNotes(c *gin.Context) {
+	db, err := getDbConnection()
+
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, "Issue connecting to db")
+	}
+
+	db.Find(&notes)
 
 	c.IndentedJSON(http.StatusOK, notes)
+}
 
+func getDbConnection() (*gorm.DB, error) {
+	dsn := ""
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, errors.New("issue connecting to the database")
+	}
+
+	return db, nil
 }
 
 func createNote(c *gin.Context) {
@@ -77,7 +82,7 @@ func getNoteById(id int) (*Note, error) {
 		}
 	}
 
-	return nil, errors.New("Error Getting Note")
+	return nil, errors.New("error getting note")
 }
 
 func favoriteNoteById(c *gin.Context) {
@@ -101,67 +106,16 @@ func favoriteNote(id int) (*Note, error) {
 	for i, n := range notes {
 		if n.ID == id {
 			currNote := &notes[i]
-			currNote.Favorite = !currNote.Favorite
+			currNote.Favorited = !currNote.Favorited
 			return currNote, nil
 		}
 	}
 
-	return nil, errors.New("Error Updating Note")
-}
-
-func connect() {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	err = db.Ping()
-	if err != nil {
-		panic(err)
-	}
-
-	rows, err := db.Query("SELECT ID, CREATED_AT, CREATED_BY, NOTE_TEXT, NOTE_TITLE, FAVORITED FROM NOTES")
-
-	if err != nil {
-		return
-	}
-
-	defer rows.Close()
-	for rows.Next() {
-		err = rows.Scan()
-		if err != nil {
-			// handle this error
-			panic(err)
-		}
-	}
-
-	fmt.Println("Successfully connected!")
-
-}
-
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
+	return nil, errors.New("error updating note")
 }
 
 func main() {
 	// connect()
-
 	router := gin.Default()
 	router.Use(cors.Default())
 

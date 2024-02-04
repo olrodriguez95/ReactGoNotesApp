@@ -47,8 +47,8 @@ function App() {
           {
             <NoteCard
               noteTitle={note?.noteTitle ?? "NO TITLE"}
-              noteText={note?.noteText}
-              starred={note?.starred}
+              noteText={note?.noteText ?? "NO TEXT"}
+              starred={note?.starred ?? false}
             />
           }
         </Row>
